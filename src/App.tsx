@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import './App.css'
+import movesData from './data/pokemon_moves.json'
 
 interface PokemonMove {
   name: string
@@ -56,38 +57,35 @@ function App() {
   const [gameWon, setGameWon] = useState(false)
 
   useEffect(() => {
-    fetch('/data/pokemon_moves.json')
-      .then(res => res.json())
-      .then((data: Record<string, unknown>[]) => {
-        const parsedMoves: PokemonMove[] = data.map(item => {
-          const powerRaw = item.power
-          const accuracyRaw = item.accuracy
-          const introducedRaw = item.introduced
-          
-          return {
-            name: String(item.name || ''),
-            type: String(item.type || ''),
-            category: String(item.category || ''),
-            power: powerRaw != null && powerRaw !== '-' && powerRaw !== '' ? Number(powerRaw) : null,
-            accuracy: accuracyRaw != null && accuracyRaw !== '-' && accuracyRaw !== '' ? Number(accuracyRaw) : null,
-            pp: Number(item.pp) || 0,
-            effect: String(item.description || ''),
-            probability: null,
-            makes_contact: item.makes_contact === true || item.makes_contact === 'true' || item.makes_contact === 1 || item.makes_contact === 'yes',
-            introduced: introducedRaw != null && !isNaN(Number(introducedRaw)) && Number(introducedRaw) > 0 ? Number(introducedRaw) : 1,
-            priority: Number(item.priority) || 0,
-          }
-        }).filter(m => m.name)
-        
-        console.log('Sample moves with introduced:', parsedMoves.slice(0, 5).map(m => ({ name: m.name, introduced: m.introduced })))
-        
-        setMoves(parsedMoves)
-        
-        // Use today's date as seed to pick the same move for everyone
-        const seed = getTodaySeed()
-        const randomIndex = Math.floor(seededRandom(seed) * parsedMoves.length)
-        setTargetMove(parsedMoves[randomIndex])
-      })
+    const data = movesData as Record<string, unknown>[]
+    const parsedMoves: PokemonMove[] = data.map(item => {
+      const powerRaw = item.power
+      const accuracyRaw = item.accuracy
+      const introducedRaw = item.introduced
+      
+      return {
+        name: String(item.name || ''),
+        type: String(item.type || ''),
+        category: String(item.category || ''),
+        power: powerRaw != null && powerRaw !== '-' && powerRaw !== '' ? Number(powerRaw) : null,
+        accuracy: accuracyRaw != null && accuracyRaw !== '-' && accuracyRaw !== '' ? Number(accuracyRaw) : null,
+        pp: Number(item.pp) || 0,
+        effect: String(item.description || ''),
+        probability: null,
+        makes_contact: item.makes_contact === true || item.makes_contact === 'true' || item.makes_contact === 1 || item.makes_contact === 'yes',
+        introduced: introducedRaw != null && !isNaN(Number(introducedRaw)) && Number(introducedRaw) > 0 ? Number(introducedRaw) : 1,
+        priority: Number(item.priority) || 0,
+      }
+    }).filter(m => m.name)
+    
+    console.log('Sample moves with introduced:', parsedMoves.slice(0, 5).map(m => ({ name: m.name, introduced: m.introduced })))
+    
+    setMoves(parsedMoves)
+    
+    // Use today's date as seed to pick the same move for everyone
+    const seed = getTodaySeed()
+    const randomIndex = Math.floor(seededRandom(seed) * parsedMoves.length)
+    setTargetMove(parsedMoves[randomIndex])
   }, [])
 
   const filteredMoves = useMemo(() => {
