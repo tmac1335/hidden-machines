@@ -47,29 +47,6 @@ function getTodaySeed(): number {
   return year * 10000 + month * 100 + day
 }
 
-// Parse CSV line handling quoted fields with commas
-function parseCSVLine(line: string): string[] {
-  const result: string[] = []
-  let current = ''
-  let inQuotes = false
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]
-    
-    if (char === '"') {
-      inQuotes = !inQuotes
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim())
-      current = ''
-    } else {
-      current += char
-    }
-  }
-  result.push(current.trim())
-  
-  return result
-}
-
 function App() {
   const [moves, setMoves] = useState<PokemonMove[]>([])
   const [targetMove, setTargetMove] = useState<PokemonMove | null>(null)
@@ -79,46 +56,26 @@ function App() {
   const [gameWon, setGameWon] = useState(false)
 
   useEffect(() => {
-    fetch('/data/pokemon_moves.csv')
-      .then(res => res.text())
-      .then(csv => {
-        const lines = csv.trim().split('\n')
-        const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
-        
-        // Find column indices dynamically based on your headers:
-        // name,type,category,power,accuracy,pp,description,move_page_desc,makes_contact,introduced,priority
-        const nameIdx = headers.indexOf('name')
-        const typeIdx = headers.indexOf('type')
-        const categoryIdx = headers.indexOf('category')
-        const powerIdx = headers.indexOf('power')
-        const accuracyIdx = headers.indexOf('accuracy')
-        const ppIdx = headers.indexOf('pp')
-        const effectIdx = headers.indexOf('description')
-        const contactIdx = headers.indexOf('makes_contact')
-        const introducedIdx = headers.indexOf('introduced')
-        const priorityIdx = headers.indexOf('priority')
-
-        console.log('Headers:', headers)
-        console.log('Column indices:', { nameIdx, typeIdx, categoryIdx, powerIdx, accuracyIdx, ppIdx, effectIdx, contactIdx, introducedIdx, priorityIdx })
-        
-        const parsedMoves: PokemonMove[] = lines.slice(1).map(line => {
-          const values = parseCSVLine(line)
-          
-          const introducedRaw = introducedIdx >= 0 ? values[introducedIdx]?.trim() : ''
-          const introduced = parseInt(introducedRaw)
+    fetch('/data/pokemon_moves.json')
+      .then(res => res.json())
+      .then((data: Record<string, unknown>[]) => {
+        const parsedMoves: PokemonMove[] = data.map(item => {
+          const powerRaw = item.power
+          const accuracyRaw = item.accuracy
+          const introducedRaw = item.introduced
           
           return {
-            name: nameIdx >= 0 ? values[nameIdx]?.trim() || '' : '',
-            type: typeIdx >= 0 ? values[typeIdx]?.trim() || '' : '',
-            category: categoryIdx >= 0 ? values[categoryIdx]?.trim() || '' : '',
-            power: powerIdx >= 0 && values[powerIdx] && values[powerIdx] !== '-' && values[powerIdx].trim() !== '' ? parseInt(values[powerIdx]) : null,
-            accuracy: accuracyIdx >= 0 && values[accuracyIdx] && values[accuracyIdx] !== '-' && values[accuracyIdx].trim() !== '' ? parseInt(values[accuracyIdx]) : null,
-            pp: ppIdx >= 0 ? parseInt(values[ppIdx]) || 0 : 0,
-            effect: effectIdx >= 0 ? values[effectIdx]?.trim() || '' : '',
+            name: String(item.name || ''),
+            type: String(item.type || ''),
+            category: String(item.category || ''),
+            power: powerRaw != null && powerRaw !== '-' && powerRaw !== '' ? Number(powerRaw) : null,
+            accuracy: accuracyRaw != null && accuracyRaw !== '-' && accuracyRaw !== '' ? Number(accuracyRaw) : null,
+            pp: Number(item.pp) || 0,
+            effect: String(item.description || ''),
             probability: null,
-            makes_contact: contactIdx >= 0 ? (values[contactIdx]?.trim().toLowerCase() === 'true' || values[contactIdx]?.trim() === '1' || values[contactIdx]?.trim().toLowerCase() === 'yes') : false,
-            introduced: !isNaN(introduced) && introduced > 0 ? introduced : 1,
-            priority: priorityIdx >= 0 ? parseInt(values[priorityIdx]) || 0 : 0,
+            makes_contact: item.makes_contact === true || item.makes_contact === 'true' || item.makes_contact === 1 || item.makes_contact === 'yes',
+            introduced: introducedRaw != null && !isNaN(Number(introducedRaw)) && Number(introducedRaw) > 0 ? Number(introducedRaw) : 1,
+            priority: Number(item.priority) || 0,
           }
         }).filter(m => m.name)
         
